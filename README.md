@@ -1,7 +1,7 @@
 # Neural Machine Translation (seq2seq) Tutorial
 
 *Authors: Thang Luong, Eugene Brevdo, Rui Zhao ([Google Research Blogpost](https://research.googleblog.com/2017/07/building-your-own-neural-machine.html), [Github](https://github.com/tensorflow/nmt))*
-
+*The Hyperparameter Optimization part was added in by Souparni Agnihotri*
 *This version of the tutorial requires [TensorFlow Nightly](https://github.com/tensorflow/tensorflow/#installation).
 For using the stable TensorFlow versions, please consider other branches such as
 [tf-1.4](https://github.com/tensorflow/nmt/tree/tf-1.4).*
@@ -1211,7 +1211,100 @@ python -m nmt.nmt \
     --dev_prefix=/tmp/wmt16/newstest2013.tok.bpe.32000 \
     --test_prefix=/tmp/wmt16/newstest2015.tok.bpe.32000
 ```
+#Hyperparameter optimization
 
+##Random Search
+Random search is a method of optimizing the hyperparameters such that the best results can be obtained. 
+It randomly samples from a given range of values for a set of hyperparameters and provides a way for the user to get an idea about which hyperparameters affect performance and output the most. 
+One should be aware of the "curse of dimensionality" that can occur with this kind of search. The greater the number of hyperparameters we try to optimize, the more number of searches we will need to perform in order to get a good sample of the "best" hyperparameters. 
+One of the drawbacks of the random search is that, depending on the number of dimensions, the optimum hyperparameter configuration may never be explored. 
+
+
+Run the following command to download the data for training NMT model:\
+	`nmt/scripts/download_iwslt15.sh /tmp/nmt_data`
+
+Run the following command to train the model with the random search:
+
+``` shell
+mkdir /tmp/nmt_model_random
+python -m nmt.nmt_v2 \
+    --src=vi --tgt=en \
+    --vocab_prefix=/tmp/nmt_data/vocab  \
+    --train_prefix=/tmp/nmt_data/train \
+    --dev_prefix=/tmp/nmt_data/tst2012  \
+    --test_prefix=/tmp/nmt_data/tst2013 \
+    --out_dir=/tmp/nmt_model_random \
+```
+The random configurations chosen will be outputted at the end of the training along with the best BLEU score obtained. 
+
+**Results**
+
+Here is the outputs obtained for the vi-en translations using random search. All the configurations were trained for 6000 epochs.
+
+
+| Hyperparameters | Config 1 | Config 2 |  Config 3 | Config 4 |
+| --------------- | :---------: | :-------: | :-------: | :--------: |
+| Learning rate   | 0.001392 | 0.03648 | 0.00993 | 0.01135 |
+| Optimizer |  sgd  | sgd   | sgd | adam |
+| Type of attention | luong | luong |  bahdanau | luong |
+| Attention Architecture | standard | standard |  standard | gnmtV2 |
+| Inference mode | sample  | sample | greedy | beam search and beam width 10  |
+| BLEU dev | 0.0  | 0.2 | 5.3 | 5.6 |
+| BLEU test| 0.0  | 0.4 | 1.4 | 1.4 |
+ 
+| Hyperparameters |  Config 5 | Config 6 | Config 7 | Config 8 |
+| --------------- | :---------: | :-------: | :-------: | :--------: |
+| Learning rate | 0.033942 | 0.02862 | 0.02517 | 0.040428 |
+| Optimizer |  sgd | adam & sgd &sgd |
+| Type of attention | luong | luong | luong | luong |
+| Attention Architecture | gnmt | standard | gnmtV2 & gnmtV2 |
+| Inference mode | sample | sample | sample | greedy |
+| BLEU dev | 0.0 | 2.0 | 0.0 | 0.4 |
+| BLEU test |  0.3 | 1.2 | 1.3 | 1.3 |
+
+It is clear to see that beam search and greedy inference modes performed better than the sample inference. 
+Using successive halving, we can choose the top 4 performing configurations and run them for 12,000 epochs. The BLEU scores improved significantly. When beam search is used, the beam width is always 10.
+
+##Successive halving
+Successive halving is a method in which we further narrow down the search to find the top configurations. The idea of successive halving is to first try *N* hyperparameter configurations for some fixed amount of time *T*. Then we keep *N/2* of the best performing hyperparameters and run it for time *2T*. 
+In our adaption, we use double the number of epochs at each round. This is continued until only one set of hyperparameter configurations is left. 
+The training can be done in the same way as described in the "Hands-on - Let's train an NMT model" section where you can define the specific hyperparameter configurations suited for your needs. You will need to run the nmt.py file and not the nmt_v2.py file for this step.
+
+**Results**
+Successive halving applied for 12000 epochs: 
+ 
+| Hyperparameters | Config 1 | Config 2 |  Config 3 | Config 4 |
+| --------------- | :---------: | :-------: | :-------: | :--------: |
+| Learning rate   | 0.001392 | 0.03648 | 0.00993 | 0.01135 |
+| Optimizer |  sgd  | adam   | sgd | sgd |
+| Type of attention | luong | bahdanau  | luong | bahdanau |
+| Attention Architecture | standard | gnmtV2 |  gnmtV2 | standard |
+| Inference mode | greedy  | beam search | beam search | greedy |
+| BLEU dev | 14.1 | 6.0 | 11.6 | 11.7 |
+| BLEU test | 16.1  | 5.1 | 12.8 | 12.3 |
+
+After narrowing down the four configurations from successive halving, it is clear which configuration is the best for the given dataset. 
+Keeping other hyperparameters the same, the luong attention model seemed to outperform the bahdanau attention. In addition, for the given dataset, the standard attention architecture seemed to perform better than the GNMT architecture. This means that unidirectional encoders were better than bidirectional encoders. A combination of adam optimizer, GNMT architecture, bahdanau attention adn beam search inference performed way worse than the other configurations in table 4.3. So we discarded that set of hyperparameters. 
+
+We ran the given configuration for 24000 epochs. Although we only needed to train one of the configurations, we trained the model with a different inference mode. It was interesting to see how beam search performed slightly better than greedy when the other configurations remained the same. The encoders used for the Vietnamese-English translation was unidirectional. The State of the art results mentioned below uses the bidirectional encoder. These are the same results mentioned above. 
+
+** Results for 24000 epochs:**
+
+| Hyperparameters | Config 1 | Config 2 |  Config 3 | State of the art (133K epochs) |
+| --------------- | :---------: | :-------: | :-------: | :--------: |
+| Learning rate   | 1 | 1 | 0.734589&1 |
+| Optimizer |  sgd  | sgd   | sgd | sgd |
+| Type of attention | luong | bahdanau  | luong | luong |
+| Attention Architecture | standard | standard |  standard | standard |
+| Inference mode   | beam search | greedy | greedy | beam search |
+| BLEU dev | 18.1 | 14.2 | 17.1  | 23.8 |
+| BLEU test | 20.3  | 15.6 | 19.8 | 26.1 |
+
+From these results, we observe that beam search clearly helps the model perform better than greedy. The current beam search strategy generates the target sentence word by word from left to right while keeping a fixed amount of active candidates at each time step. The greedy strategy only compares one most-likely candidate. Thus the larger search space could help beam search make better judgements about past word relationships.
+Some other observations we made are that --
+Adam optimizer tends to give reasonable results for unfamiliar architectures but SGD with scheduled learning rate tends to lead to better performance. 
+Luong style works well with different settings. But from other resources we find out that Bahdanau style attention often works better with bidirectionality on the encoder side.
+For the Vietnameese-English translations, unidirectional encoders and the standard architecture worked very well. 
 
 # Other resources
 
@@ -1239,7 +1332,7 @@ OpenNMT-py [https://github.com/OpenNMT/OpenNMT-py](https://github.com/OpenNMT/Op
 
 
 # Acknowledgment
-We would like to thank Denny Britz, Anna Goldie, Derek Murray, and Cinjon Resnick for their work bringing new features to TensorFlow and the seq2seq library. Additional thanks go to Lukasz Kaiser for the initial help on the seq2seq codebase; Quoc Le for the suggestion to replicate GNMT; Yonghui Wu and Zhifeng Chen for details on the GNMT systems; as well as the Google Brain team for their support and feedback!
+I would like to thank Minh-Thang Luong, Eugene Brevdo and Rui Zhao for providing the neatly explained NMT tutorial. I would also like to thank Dr. Chinmay Hegde for supporting and mentoring me throughouot this research.
 
 # References
 
@@ -1249,14 +1342,15 @@ We would like to thank Denny Britz, Anna Goldie, Derek Murray, and Cinjon Resnic
    Manning. 2015.[ Effective approaches to attention-based neural machine translation](https://arxiv.org/pdf/1508.04025.pdf). EMNLP.
 -  Ilya Sutskever, Oriol Vinyals, and Quoc
    V. Le. 2014.[ Sequence to sequence learning with neural networks](https://papers.nips.cc/paper/5346-sequence-to-sequence-learning-with-neural-networks.pdf). NIPS.
+-  Minh{-}Thang Luong, Eugene Brevdo and Rui Zhao. Neural Machine Translation (seq2seq) Tutorial. [https://github.com/tensorflow/nmt]
 
 # BibTex
 
 ```
-@article{luong17,
-  author  = {Minh{-}Thang Luong and Eugene Brevdo and Rui Zhao},
-  title   = {Neural Machine Translation (seq2seq) Tutorial},
-  journal = {https://github.com/tensorflow/nmt},
-  year    = {2017},
+@article{Agnihotri,
+     AUTHOR = "Souparni Agnihotri",
+     TITLE = "Hyperparameter Optimisation on Neural Machine Translation",
+     SCHOOL = "Iowa State University",
+     YEAR = 2019}
 }
 ```
