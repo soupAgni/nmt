@@ -1211,9 +1211,9 @@ python -m nmt.nmt \
     --dev_prefix=/tmp/wmt16/newstest2013.tok.bpe.32000 \
     --test_prefix=/tmp/wmt16/newstest2015.tok.bpe.32000
 ```
-#Hyperparameter optimization
+# Hyperparameter optimization
 
-##Random Search
+## Random Search
 Random search is a method of optimizing the hyperparameters such that the best results can be obtained. 
 It randomly samples from a given range of values for a set of hyperparameters and provides a way for the user to get an idea about which hyperparameters affect performance and output the most. 
 One should be aware of the "curse of dimensionality" that can occur with this kind of search. The greater the number of hyperparameters we try to optimize, the more number of searches we will need to perform in order to get a good sample of the "best" hyperparameters. 
@@ -1237,7 +1237,7 @@ python -m nmt.nmt_v2 \
 ```
 The random configurations chosen will be outputted at the end of the training along with the best BLEU score obtained. 
 
-**Results**
+**Results**:
 
 Here is the outputs obtained for the vi-en translations using random search. All the configurations were trained for 6000 epochs.
 
@@ -1265,12 +1265,12 @@ Here is the outputs obtained for the vi-en translations using random search. All
 It is clear to see that beam search and greedy inference modes performed better than the sample inference. 
 Using successive halving, we can choose the top 4 performing configurations and run them for 12,000 epochs. The BLEU scores improved significantly. When beam search is used, the beam width is always 10.
 
-##Successive halving
+## Successive halving
 Successive halving is a method in which we further narrow down the search to find the top configurations. The idea of successive halving is to first try *N* hyperparameter configurations for some fixed amount of time *T*. Then we keep *N/2* of the best performing hyperparameters and run it for time *2T*. 
 In our adaption, we use double the number of epochs at each round. This is continued until only one set of hyperparameter configurations is left. 
 The training can be done in the same way as described in the "Hands-on - Let's train an NMT model" section where you can define the specific hyperparameter configurations suited for your needs. You will need to run the nmt.py file and not the nmt_v2.py file for this step.
 
-**Results**
+**Results**:
 Successive halving applied for 12000 epochs: 
  
 | Hyperparameters | Config 1 | Config 2 |  Config 3 | Config 4 |
@@ -1288,7 +1288,7 @@ Keeping other hyperparameters the same, the luong attention model seemed to outp
 
 We ran the given configuration for 24000 epochs. Although we only needed to train one of the configurations, we trained the model with a different inference mode. It was interesting to see how beam search performed slightly better than greedy when the other configurations remained the same. The encoders used for the Vietnamese-English translation was unidirectional. The State of the art results mentioned below uses the bidirectional encoder. These are the same results mentioned above. 
 
-** Results for 24000 epochs:**
+**Results for 24000 epochs**
 
 | Hyperparameters | Config 1 | Config 2 |  Config 3 | State of the art (133K epochs) |
 | --------------- | :---------: | :-------: | :-------: | :--------: |
@@ -1301,7 +1301,7 @@ We ran the given configuration for 24000 epochs. Although we only needed to trai
 | BLEU test | 20.3  | 15.6 | 19.8 | 26.1 |
 
 From these results, we observe that beam search clearly helps the model perform better than greedy. The current beam search strategy generates the target sentence word by word from left to right while keeping a fixed amount of active candidates at each time step. The greedy strategy only compares one most-likely candidate. Thus the larger search space could help beam search make better judgements about past word relationships.
-Some other observations we made are that --
+Some other observations we made are that -
 Adam optimizer tends to give reasonable results for unfamiliar architectures but SGD with scheduled learning rate tends to lead to better performance. 
 Luong style works well with different settings. But from other resources we find out that Bahdanau style attention often works better with bidirectionality on the encoder side.
 For the Vietnameese-English translations, unidirectional encoders and the standard architecture worked very well. 
