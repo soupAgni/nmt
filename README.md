@@ -1,7 +1,7 @@
 # Neural Machine Translation (seq2seq) Tutorial
 
 *Authors: Thang Luong, Eugene Brevdo, Rui Zhao ([Google Research Blogpost](https://research.googleblog.com/2017/07/building-your-own-neural-machine.html), [Github](https://github.com/tensorflow/nmt))*
-*The Hyperparameter Optimization part was added in by Souparni Agnihotri*
+*The Hyperparameter Optimization part was added in by Souparni Agnihotri(https://github.com/soupAgni).*
 *This version of the tutorial requires [TensorFlow Nightly](https://github.com/tensorflow/tensorflow/#installation).
 For using the stable TensorFlow versions, please consider other branches such as
 [tf-1.4](https://github.com/tensorflow/nmt/tree/tf-1.4).*
@@ -1292,7 +1292,7 @@ We ran the given configuration for 24000 epochs. Although we only needed to trai
 
 | Hyperparameters | Config 1 | Config 2 |  Config 3 | State of the art (133K epochs) |
 | --------------- | :---------: | :-------: | :-------: | :--------: |
-| Learning rate   | 1 | 1 | 0.734589&1 |
+| Learning rate   | 1 | 1 | 0.734589 | 1 |
 | Optimizer |  sgd  | sgd   | sgd | sgd |
 | Type of attention | luong | bahdanau  | luong | luong |
 | Attention Architecture | standard | standard |  standard | standard |
